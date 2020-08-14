@@ -1,0 +1,1005 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Print</title>
+    <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <style>
+        button {
+            width: 100px;
+            height: 100px;
+            background: #00cccc;
+            border: none;
+            outline: none;
+            color: #000;
+            font-size: 10pt;
+            font-weight: 600;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #lable1 {
+            font-size: 20px;
+        }
+
+        button:hover {
+            background: #00cccc;
+        }
+
+        body {
+            word-break: break-all;
+            margin: 0 1em;
+            min-height: 100vh;
+            font-family: Consolas, "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", Monaco, "Courier New", monospace;
+            <!--overflow: hidden;-->
+        }
+
+        .empty::before {
+            position: absolute;
+            font-size: 50px;
+            content: '将模板数据\A拖到这里';
+            white-space: pre;
+            left: 60%;
+            top: 20%;
+            transform: translate(-50%,-50%);
+            color: gray;
+        }
+        .item-title,.item-content 
+        {
+        	border: 1px solid #000;height:30px;
+        }
+    </style>
+    <script>
+
+        window.addEventListener("dragenter", function (event) { event.preventDefault(); }, false);
+        window.addEventListener("dragover", function (event) { event.preventDefault(); }, false);
+        window.addEventListener("drop", function (event) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var strs = new Array(); 
+                strs = e.target.result.split(",");
+                $('#temp').val(strs[1]);
+            };
+            reader.readAsDataURL(event.dataTransfer.files[0]);
+            event.preventDefault();
+        }, false);
+
+        var ws;
+        $(function () {
+            var sendData = {
+                eventType: "scanning",
+                data: {
+                    operate: "open"
+                }
+            };
+            $("#uriForm").submit(function () {
+                log("准备连接到" + $("#uri").val());
+                ws = new WebSocket($("#uri").val());
+                //连接成功建立后响应
+                ws.onopen = function () {
+                    log("成功连接到" + $("#uri").val());
+                }
+                //收到服务器消息后响应
+                ws.onmessage = function (event) {
+                    log("收到服务器消息:"+event.data);
+                    var ret = JSON.parse(event.data);
+                    if (ret.code != 0)
+                        log("异常：" + ret.msg);
+                    else
+                        log("打印成功，后续需要回调打印成功接口");
+                }
+                //连接关闭后响应
+                ws.onclose = function () {
+                    log("关闭连接");
+                    $("#disconnect").attr({ "disabled": "disabled" });
+                    $("#uri").removeAttr("disabled");
+                    $("#connect").removeAttr("disabled");
+                    ws = null;
+                }
+                $("#uri").attr({ "disabled": "disabled" });
+                $("#connect").attr({ "disabled": "disabled" });
+                $("#disconnect").removeAttr("disabled");
+                return false;
+            });
+        })
+
+        //在消息框中打印内容
+        function log(text) {
+            $("#log").append(text + "\n");
+        }
+
+        function isString(str) {
+            return (typeof str == 'string') && str.constructor == String;
+        }
+        function preview (sendData,cycles){
+            if (!ws || ws.readyState !== 1) {
+                alert('请先连接服务');
+                return false;
+            }
+            //发送数据
+            //测试打印多张图片
+            for (var i = 0; i < cycles; i++) {
+                ws.send(JSON.stringify(sendData));
+            }
+        
+        }
+        function getPrinterName(sendData,cycles){
+            if (!ws || ws.readyState !== 1) {
+                alert('请先连接服务');
+                return false;
+            }
+            //发送数据
+            //测试打印多张图片
+            for (var i = 0; i < cycles; i++) {
+                ws.send(JSON.stringify(sendData));
+            }
+        }
+        function getPageSizeName(){
+            if (!ws || ws.readyState !== 1) {
+                alert('请先连接服务');
+                return false;
+            }
+        
+        }
+        //发送字符串消息
+        $(function () {
+
+            $("#disconnect").click(function () {
+                if (ws) {
+                    $("#log").empty();
+                    ws.close();
+                    ws = null;
+                }
+                return false;
+            });
+
+            $("#reset").click(function () {
+                $("#log").empty();
+                return false;
+            });
+
+            $("#print").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var temp = $('#temp').val();
+                var data = temp;
+                var sendData = {
+                    fileType: "jpg", //图片（其它格式）都是“jpg”类型
+                    printType: "Base64",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: data
+                };
+                //发送数据
+                //测试打印多张图片
+                for (var i = 0; i < 1; i++) {
+                    ws.send(JSON.stringify(sendData));
+                }
+            });
+            $("#preViewBase64").click(function () {
+                var sendData = {
+                    fileType: "jpg", //图片（其它格式）都是“jpg”类型
+                    printType: "Base64",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: $('#temp').val()
+                };
+                preview(sendData, 1);
+            });
+            $("#printByUrl").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var url = $('#picUrl').val();
+                var data = url;
+                var sendData = {
+                    fileType: "jpg",
+                    printType: "filePath",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: data
+                };
+                //,$('#picUrl2').val(),$('#picUrl3').val()
+                var urlArr = [$('#picUrl').val()];
+                //发送数据
+                //测试打印多张图片
+                for (var i = 0; i < 1; i++) {
+                    for (var j = 0; j < urlArr.length; j++) {
+                        sendData.data = urlArr[j];
+                        ws.send(JSON.stringify(sendData));
+                    }
+                }
+            });
+            $("#preViewUrl").click(function () {
+                var sendData = {
+                    fileType: "jpg", //图片（其它格式）都是“jpg”类型
+                    printType: "filePath",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: $('#picUrl').val()
+                };
+                preview(sendData, 1);
+            });
+            $("#printPdfByUrl").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var url = $('#pdfUrl').val();
+                var data = url;
+                var sendData = {
+                    fileType: "pdf",
+                    printType: "filePath",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: data
+                };
+
+                var urlArr = [url];
+                //发送数据
+                //测试打印多张图片
+                for (var i = 0; i < 1; i++) {
+                    for (var j = 0; j < urlArr.length; j++) {
+                        sendData.data = urlArr[j];
+                        ws.send(JSON.stringify(sendData));
+                    }
+                }
+            });
+            $("#preViewPdfByUrl").click(function () {
+                var sendData = {
+                    fileType: "pdf",
+                    printType: "filePath",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: $('#pdfUrl').val()
+                };
+                preview(sendData, 1);
+            });
+            $("#printHtml").click(function () {
+                var innerHtml = $("html").html();
+                innerHtml = $("#yhtcprediv").html();
+                //                console.log(html);
+                /*
+                */
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var url = $('#pdfUrl').val();
+                var data = innerHtml;
+                var sendData = {
+                    fileType: "html",
+                    printType: "filePath",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: data
+                };
+
+                var urlArr = [innerHtml];
+                //发送数据
+                //测试打印多张图片
+                for (var i = 0; i < 1; i++) {
+                    for (var j = 0; j < urlArr.length; j++) {
+                        sendData.data = urlArr[j];
+                        ws.send(JSON.stringify(sendData));
+                    }
+                }
+            });
+            $("#preViewHtml").click(function () {
+                var sendData = {
+                    fileType: "html",
+                    printType: "filePath",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: $("#yhtcprediv").html()
+                };
+                preview(sendData, 1);
+            });
+            $("#getPrinterName").click(function () {
+                connect($("#uri").val(), "getPrinterName", "");
+            });
+            $("#printerNames").change(function () {
+                connect($("#uri").val(), "getPageSizes", $(this).val());
+            });
+            $("#btnConWebService").click(function () {
+                connectWebService();
+            });
+            $("#btnConWebServicePost").click(function () {
+                connectWebServicePost();
+            });
+            $("#btnHttpImg").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var sendData = {
+                    fileType: "jpg",
+                    printType: "filePath",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: "http://192.168.1.11:81/Dev/DocumentService/Download/Document/?fileUid=81a06484-558f-4915-a25d-1cc5dcf5bfef&token=4b770264d2fa30c4100ec1a010f69293"
+                };
+                ws.send(JSON.stringify(sendData));
+            });
+            $("#btnHttpImgPreview").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var sendData = {
+                    fileType: "jpg",
+                    printType: "filePath",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: "http://192.168.1.11:81/Dev/DocumentService/Download/Document/?fileUid=81a06484-558f-4915-a25d-1cc5dcf5bfef&token=4b770264d2fa30c4100ec1a010f69293"
+                };
+                ws.send(JSON.stringify(sendData));
+            });
+            $("#btnHttpPdf").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var sendData = {
+                    fileType: "jpg",
+                    printType: "filePath",
+                    eventType: "print",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: "http://127.0.0.2:3000"
+                };
+                ws.send(JSON.stringify(sendData));
+            });
+            $("#btnHttpPdfPreview").click(function () {
+                if (!ws || ws.readyState !== 1) {
+                    alert('请先连接服务');
+                    return false;
+                }
+                var url = "http://192.168.1.11:81/Dev/DocumentService/Download/Document/?fileUid=e88af5ec-99a0-4308-a176-611ecb5a376c&pages=&preferredContentType=&token=a73a696ff9ab5715e8429e66b3bd1ecf";
+                var sendData = {
+                    fileType: "jpg",
+                    printType: "filePath",
+                    eventType: "preview",
+                    direction: $("#Direction").val(),
+                    printerName: $("#printerNames").val(),
+                    paperName: $("#paperNames").val(),
+                    data: "http://127.0.0.2:3000"
+                };
+                ws.send(JSON.stringify(sendData));
+            });
+        });
+        function connect(uri,type,printerName) {
+            var ws2 = new WebSocket(uri);
+            //连接成功建立后响应
+            ws2.onopen = function () {
+                log("成功连接到" + uri);
+            }
+            //收到服务器消息后响应
+            ws2.onmessage = function (event) {
+                log("收到服务器消息:"+event.data);
+                if(type=="getPrinterName"){
+                    addPrinterName(event.data);
+                }else{
+                    addPageSize(event.data);
+                }
+                ws2.close();
+                ws2 = null;
+            }
+            //连接关闭后响应
+            ws2.onclose = function () {
+                log("关闭连接");
+                ws2 = null;
+            }
+            var sendData = {
+                fileType: type,
+                printType: "",
+                eventType: type,
+                data: printerName
+            };
+            setTimeout(function(){
+                ws2.send(JSON.stringify(sendData));
+            },1000);
+        }
+        function addPrinterName(data){
+            var printerNames = data.split(',');
+            var options = "";
+            for (i = 0; i < printerNames.length; i++) {
+                options += '<option value="' + printerNames[i] + '" >' + printerNames[i] + '</option>';
+            }
+            $("#printerNames").html("");
+            $("#printerNames").append(options);
+        }
+        function addPageSize(data){
+            var paperNames = data.split(',');
+            var options = "";
+            for (i = 0; i < paperNames.length; i++) {
+                options += '<option value="' + paperNames[i] + '" >' + paperNames[i] + '</option>';
+            }
+            $("#paperNames").html("");
+            $("#paperNames").append(options);
+        }
+        function connectWebService(){
+            var url = 'http://localhost:13576/AssistToolService.asmx/HelloWorld';
+            url = 'http://localhost:13576/AssistToolService.asmx/LoginPost?username=xxx&password=111';
+            /*
+            $.ajax({
+                url: url,
+                type: 'GET',
+                header: {
+                    'Access-Control-Allow-Origin': '*'
+                },
+                dataType: "string",
+                success: function (data) {
+                    alert(data);
+                },
+                error: function(error){
+                    alert("连接出错");
+                }
+            });
+            */
+/*            
+            
+           $.ajax({
+             url:url,
+             dataType:'jsonp',
+             processData: false, 
+             type:'get',
+             success:function(data){
+               alert("data="+data);
+             },
+             error:function(XMLHttpRequest, textStatus, errorThrown) {
+               console.log("XMLHttpRequest[status="+XMLHttpRequest.status+",readyState="+XMLHttpRequest.readyState+"];textStatus=" + textStatus + ";errorThrown=" + errorThrown);
+             }
+            });
+            
+*/
+            /*
+            */
+            $.ajax({ 
+                url: url, 
+                type: "GET", 
+                dataType: "jsonp", //指定服务器返回的数据类型
+                jsonp:"jsonCallback",
+                crossdomain: true,
+                success: function (data) { 
+                    alert(data); 
+                    var result = JSON.stringify(data); //json对象转成字符串
+                    alert(result.data); 
+                }, 
+                error:function(XMLHttpRequest, textStatus, errorThrown){
+                    console.log("XMLHttpRequest[status="+XMLHttpRequest.status+",readyState="+XMLHttpRequest.readyState+"];textStatus=" + textStatus + ";errorThrown=" + errorThrown);
+                }
+            });
+            /*
+            // 设置crossDomain和dataType参数以使用JSONP
+            $.ajax({
+              dataType: "jsonp",
+              url: url,
+              crossDomain: true,
+              data: {
+                
+              }
+            }).done(function(data) {
+              // 请求完成时的处理函数
+              alert(data); 
+              var result = JSON.stringify(data); //json对象转成字符串
+              alert(result.data); 
+            });
+            */
+/*
+            // 使用getJSON
+            $.getJSON("http://www.example.com/xxx?jsoncallback=?", {
+              // 参数
+            }, function() {
+              // 请求完成时的处理函数
+            });
+            
+            */
+            /*
+            $.ajax({
+                url: url,
+                type: "GET",
+                dataType: "json",
+                contentType: "application/json; charset=utf-8",
+                data: data,  
+                success: function (json) {
+                    console.info(json.d);
+                    alert(json.d);
+                }
+            });
+            */
+        }
+        function connectWebServicePost(){
+            var url = 'http://localhost:13576/AssistToolService.asmx/LoginPost?username=xxx&password=111';
+            $.ajax({ 
+                url: url, 
+                type: "POST", 
+                cache:false,
+                data:{"lisi":"xiaoguan","password":"123456"},
+                dataType: "jsonp", //指定服务器返回的数据类型
+                jsonp:"jsonCallback",
+                crossDomain: true,
+                success: function (data) { 
+                    alert(data); 
+                    var result = JSON.stringify(data); //json对象转成字符串
+                    alert(result.data); 
+                }, 
+                error:function(XMLHttpRequest, textStatus, errorThrown){
+                    console.log("XMLHttpRequest[status="+XMLHttpRequest.status+",readyState="+XMLHttpRequest.readyState+"];textStatus=" + textStatus + ";errorThrown=" + errorThrown);
+                }
+            });
+        }
+        function jsonCallback(data){
+            alert("jsonCallback="+data.data); 
+            /*
+            var result = JSON.stringify(data); //json对象转成字符串
+            alert(result.data); 
+            */
+        }
+
+
+    </script>
+</head>
+
+<body class="empty">
+    <form id="uriForm">
+        <input type="text" id="uri" value="ws://localhost:4649/PrinterService"
+               style="height:30px;width: 200px;"> <input type="submit" id="connect"
+                                             value="Connect"><input type="button" id="disconnect"
+                                                                    value="Disconnect" disabled="disabled">
+    </form>
+    <label>模板数据(直接拖动模板到此页面):</label>
+    <textarea id="temp" style="height:30px;width: 1000px;height:200px"></textarea>
+    <br />
+    <!--<label>检查执行唯一号:</label><input type="text" id="performId" value="1258954261618757632" style="height:30px;width: 300px">
+    <br />-->
+    <label>输入打印图片完整地址:</label><input type="text" id="picUrl" value="D:\testPic01.png" style="height:30px;width: 600px">
+    <br />
+    <input type="text" id="picUrl2" value="C:\Documents and Settings\Administrator\桌面\打印测试文件\CT.jpg" style="height:30px;width: 600px">
+    <br />
+    <input type="text" id="picUrl3" value="C:\Documents and Settings\Administrator\桌面\打印测试文件\DR.jpg" style="height:30px;width: 600px">
+    <br />
+    <label>输入打印PDF完整地址:</label><input type="text" id="pdfUrl" value="D:\动态血压.pdf" style="height:30px;width: 600px">
+    <br />
+    <input type="button" id="print" value="打印">
+    <input type="button" id="preViewBase64" value="打印预览(Base64)">
+    <input type="button" id="printByUrl" value="打印(URL方式)">
+    <input type="button" id="preViewUrl" value="打印预览(URL方式)">
+    <input type="button" id="printPdfByUrl" value="打印PDF(URL方式)">
+    <input type="button" id="preViewPdfByUrl" value="打印预览PDF(URL方式)">
+    <input type="button" id="reset" value="清空消息框" />
+    <input type="button" id="printHtml" value="打印HTML">
+    <input type="button" id="preViewHtml" value="打印预览HTML">
+    <input type="button" id="btnHttpImg" value="打印(http-img)">
+    <input type="button" id="btnHttpImgPreview" value="打印预览(http-img)">
+    <input type="button" id="btnHttpPdf" value="打印(http-pdf)">
+    <input type="button" id="btnHttpPdfPreview" value="打印预览(http-pdf)">
+    <input type="button" id="getPrinterName" value="获取打印机">
+    <select id="printerNames"></select>
+    <select id="paperNames"></select>
+    <select class="printDirection printTextDirection" id="Direction" title="方向" style="height: 24px;width: 72px;">
+        <option value="1">纵向</option>
+        <option value="2">横向</option>
+    </select>
+    <input type="button" id="btnConWebServicePost" value="连接WebService(POST)">
+    <input type="button" id="btnConWebService" value="连接WebService">
+    <form>
+        <textarea id="log" rows="30" cols="100"
+                  style="height:30px;font-family: monospace; color: red;"></textarea>
+    </form>
+
+    <div class="introBox section package boxBg02" id="yhtcprediv">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" class="table-grid table-text-grid">
+            
+            <tr><td colspan="11" class="item-content-title" style="height:30px;padding-top: 10px;padding-bottom: 10px;font-size:20px;font-weight:bold;text-align:center;">检查护送单</td></tr>
+            <tr><td class="item-title" style="height:30px;border: 1px solid #000;height:30px;font-weight:bold;">年龄</td><td  class="item-title" style="height:30px;border: 1px solid #000;height:30px;font-weight:bold;">机房</td><td  class="item-title" style="height:30px;border: 1px solid #000;height:30px;font-weight:bold;">出生日期</td><td  class="item-title" style="height:30px;border: 1px solid #000;height:30px;font-weight:bold;">预约时间</td><td  class="item-title" style="height:30px;border: 1px solid #000;height:30px;font-weight:bold;">排队号</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+        
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+       
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;font-size:20px;">普通彩超</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">36</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;color:red;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">09:00-09:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">12</td></tr>
+            <tr><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">岁</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">B超机房</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;"></td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">10:00-10:30</td><td class="item-content" style="height:30px;border: 1px solid #000;height:30px;">28</td></tr>
+            
+        </table>
+    </div>
+    <br>
+</body>
+</html>

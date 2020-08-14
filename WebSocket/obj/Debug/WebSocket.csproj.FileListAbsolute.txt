@@ -1,0 +1,9 @@
+C:\IMCISAssist\WebSocket\bin\Debug\websocket-sharp.dll
+C:\IMCISAssist\WebSocket\bin\Debug\websocket-sharp.pdb
+C:\IMCISAssist\WebSocket\obj\Debug\websocket-sharp.dll
+C:\IMCISAssist\WebSocket\obj\Debug\websocket-sharp.pdb
+C:\IMCISAssistTool\WebSocket\bin\Debug\websocket-sharp.dll
+C:\IMCISAssistTool\WebSocket\bin\Debug\websocket-sharp.pdb
+C:\IMCISAssistTool\WebSocket\obj\Debug\websocket-sharp.dll
+C:\IMCISAssistTool\WebSocket\obj\Debug\websocket-sharp.pdb
+C:\IMCISAssistTool\WebSocket\obj\Debug\WebSocket.csprojResolveAssemblyReference.cache
